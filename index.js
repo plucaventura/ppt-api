@@ -1,44 +1,61 @@
 const express = require("express");
 const PptxGenJS = require("pptxgenjs");
-const axios = require("axios");
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 app.post("/generate-ppt", async (req, res) => {
   try {
-    const { titolo, descrizione, immagineUrl } = req.body;
+    const { titolo, immagine1, immagine2 } = req.body;
 
     let pptx = new PptxGenJS();
+    await pptx.load("template.pptx");
+
     let slide = pptx.addSlide();
 
-    slide.addText(titolo || "Titolo", { x: 1, y: 1, fontSize: 24 });
-    slide.addText(descrizione || "Descrizione", { x: 1, y: 2, fontSize: 14 });
+    // Titolo
+    slide.addText(titolo || "Titolo", {
+      x: 0.5,
+      y: 0.3,
+      fontSize: 28,
+      bold: true,
+    });
 
-    if (immagineUrl) {
-      const image = await axios.get(immagineUrl, {
-        responseType: "arraybuffer",
-      });
-
-      const base64 = Buffer.from(image.data, "binary").toString("base64");
-
+    // Immagine 1
+    if (immagine1) {
       slide.addImage({
-        data: "image/jpeg;base64," + base64,
-        x: 1,
-        y: 3,
-        w: 4,
+        data: "image/png;base64," + immagine1,
+        x: 0.5,
+        y: 1.5,
+        w: 4.5,
+        h: 3,
+      });
+    }
+
+    // Immagine 2
+    if (immagine2) {
+      slide.addImage({
+        data: "image/png;base64," + immagine2,
+        x: 5.2,
+        y: 1.5,
+        w: 4.5,
         h: 3,
       });
     }
 
     const buffer = await pptx.write("nodebuffer");
 
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
-    res.send(buffer);
+    res.writeHead(200, {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "Content-Disposition": "attachment; filename=output.pptx",
+      "Content-Length": buffer.length,
+    });
+
+    res.end(buffer);
 
   } catch (err) {
     res.status(500).send("Errore: " + err.message);
   }
 });
 
-app.listen(3000, () => console.log("Server running"));
+app.listen(process.env.PORT || 3000);
