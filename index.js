@@ -9,9 +9,23 @@ app.use(express.json({ limit: "50mb" }));
 // 🔴 INSERISCI QUI IL BASE64 DEL TEMPLATE (PNG)
 const TEMPLATE_BASE64 = "INSERISCI_QUI_IL_BASE64_DEL_TEMPLATE_PNG";
 
+// ✅ FIX BASE64 (Power Automate safe)
+const fixBase64 = (str) => {
+  if (!str) return str;
+
+  return str
+    .replace(/^data:image\/\w+;base64,/, "") // rimuove prefisso se presente
+    .replace(/ /g, "+") // 🔥 FIX principale: spazi → +
+    .replace(/\r?\n|\r/g, "") // rimuove newline
+    .trim();
+};
+
 app.post("/generate-ppt", async (req, res) => {
   try {
     const { titolo, immagine1, immagine2 } = req.body;
+
+    console.log("IMG1 length:", immagine1?.length);
+    console.log("IMG2 length:", immagine2?.length);
 
     let pptx = new PptxGenJS();
 
@@ -41,7 +55,7 @@ app.post("/generate-ppt", async (req, res) => {
     // 🖼️ SNAPSHOT 1
     if (immagine1) {
       slide.addImage({
-        data: immagine1, // già base64 completo da Office Script
+        data: "image/png;base64," + fixBase64(immagine1),
         x: 1.0,
         y: 2.0,
         w: 4.5,
@@ -52,7 +66,7 @@ app.post("/generate-ppt", async (req, res) => {
     // 🖼️ SNAPSHOT 2
     if (immagine2) {
       slide.addImage({
-        data: immagine2,
+        data: "image/png;base64," + fixBase64(immagine2),
         x: 5.5,
         y: 2.0,
         w: 4.5,
